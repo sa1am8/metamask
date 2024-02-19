@@ -3,9 +3,9 @@ from web3.datastructures import AttributeDict
 from web3.middleware import geth_poa_middleware
 from web3.types import ENS, HexBytes
 
-from .config import Config, get_config
-from .logger import log
-from .schema import Transaction
+from config import Config, get_config
+from logger import log
+from schema import Transaction
 
 CFG: Config = get_config()
 
@@ -13,6 +13,8 @@ w3: Web3 = Web3(
     Web3.HTTPProvider(f"https://mainnet.infura.io/v3/{CFG.INFURA_PROJECT_ID}")
 )
 w3.middleware_onion.inject(geth_poa_middleware, layer=0)
+
+# for polygon network might be used polygon library
 
 
 def send_transaction(
@@ -53,8 +55,14 @@ def send_transaction(
     signed_txn: AttributeDict = w3.eth.account.sign_transaction(
         transaction.model_dump(), private_key_sender
     )
-
-    tx_hash: HexBytes = w3.eth.send_raw_transaction(signed_txn.rawTransaction)  # type: ignore
+    try:
+        tx_hash: HexBytes = w3.eth.send_raw_transaction(signed_txn.rawTransaction)  # type: ignore
+    except ValueError as e:
+        log(log.ERROR, "Transaction failed: %s", e)
+        raise e
     log(log.INFO, "Transaction hash: %s", tx_hash.hex())
 
     return tx_hash.hex()
+
+
+send_transaction(value_ether=0)

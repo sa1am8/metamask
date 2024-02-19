@@ -4,8 +4,8 @@ import websocket
 from web3 import Web3
 from web3.types import ENS
 
-from .config import Config, get_config
-from .logger import log
+from config import Config, get_config
+from logger import log
 
 CFG: Config = get_config()
 
@@ -28,7 +28,7 @@ def on_error(ws, error):
     log(log.ERROR, error)
 
 
-def on_close(ws):
+def on_close(ws, **kwargs):
     log(log.CRITICAL, "WebSocket closed")
 
 
@@ -53,7 +53,7 @@ def on_open(ws):
 if __name__ == "__main__":
     websocket.enableTrace(True)
     ws = websocket.WebSocketApp(
-        "wss://mainnet.infura.io/ws/v3/YOUR_INFURA_PROJECT_ID",
+        f"wss://mainnet.infura.io/ws/v3/{CFG.INFURA_PROJECT_ID}",
         on_message=on_message,
         on_error=on_error,
         on_close=on_close,
