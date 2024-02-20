@@ -8,12 +8,24 @@ class Config(BaseSettings):
     PRIVATE_KEY_SENDER: str
     ADDRESS_SENDER: ENS
     ADDRESS_RECEIVER: str
+    GMEE_ADDRESS_SENDER: ENS
     VALUE_ETHER: float
     GAS_LIMIT: int
     INFURA_PROJECT_ID: str
+    # INFURA_NETWORK_URL: str = "https://mainnet.infura.io/v3/"
+    POLYGON_NETWORK: str = "https://rpc-mumbai.polygon.technology"
+    LINEA_NETWORK: str = "https://rpc.goerli.linea.build"
 
-    ETH_NETWORK: int = 1
-    POLYGON_NETWORK: int = 137
+    ETH_NETWORK_ID: int = 1
+    POLYGON_NETWORK_ID: int = 137
+
+    @property
+    def INFURA_NETWORK_WSS(self):
+        return "wss://mainnet.infura.io/ws/v3/" + self.INFURA_PROJECT_ID
+
+    @property
+    def INFURA_NETWORK(self):
+        return "https://mainnet.infura.io/v3/" + self.INFURA_PROJECT_ID
 
     model_config = SettingsConfigDict(
         extra="allow",

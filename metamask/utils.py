@@ -3,18 +3,14 @@ from web3.datastructures import AttributeDict
 from web3.middleware import geth_poa_middleware
 from web3.types import ENS, HexBytes
 
-from config import Config, get_config
-from logger import log
-from schema import Transaction
+from metamask.config import Config, get_config
+from metamask.logger import log
+from metamask.schema import Transaction
 
 CFG: Config = get_config()
 
-w3: Web3 = Web3(
-    Web3.HTTPProvider(f"https://mainnet.infura.io/v3/{CFG.INFURA_PROJECT_ID}")
-)
+w3: Web3 = Web3(Web3.HTTPProvider(CFG.LINEA_NETWORK))
 w3.middleware_onion.inject(geth_poa_middleware, layer=0)
-
-# for polygon network might be used polygon library
 
 
 def send_transaction(
@@ -23,7 +19,7 @@ def send_transaction(
     address_receiver: str = CFG.ADDRESS_RECEIVER,
     value_ether: float = CFG.VALUE_ETHER,
     gas_limit: int = CFG.GAS_LIMIT,
-    chain_id: int = CFG.ETH_NETWORK,
+    chain_id: int = CFG.ETH_NETWORK_ID,
 ) -> str:
     """Send a transaction to the Ethereum network. Returns the transaction hash.
 
@@ -33,7 +29,7 @@ def send_transaction(
         address_receiver (str, optional): address of receiver. Defaults to CFG.ADDRESS_RECEIVER.
         value_ether (float, optional): value of ether to send. Defaults to CFG.VALUE_ETHER.
         gas_limit (int, optional): Gas limit to use. Defaults to CFG.GAS_LIMIT.
-        chain_id (int, optional): ID of network for transaction. Defaults to CFG.ETH_NETWORK (1). Also could be used CFG.POLYGON_NETWORK (137).
+        chain_id (int, optional): ID of network for transaction. Defaults to CFG.ETH_NETWORK_ID (1). Also could be used CFG.POLYGON_NETWORK_ID (137).
 
     Returns:
         str: transaction hash
@@ -62,7 +58,9 @@ def send_transaction(
         raise e
     log(log.INFO, "Transaction hash: %s", tx_hash.hex())
 
+    w3.eth.wait_for_transaction_receipt(tx_hash.hex(), timeout=120)  # type: ignore
+    log(log.INFO, "Transaction confirmed: %s", tx_hash.hex())
     return tx_hash.hex()
 
 
-send_transaction(value_ether=0)
+send_transaction(value_ether=0.001, chain_id=59140)
