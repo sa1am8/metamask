@@ -69,6 +69,8 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ env.IMAGE_NAME }}:latest
+
   deploy:
     name: Deploy to s2b
     runs-on: ubuntu-latest
