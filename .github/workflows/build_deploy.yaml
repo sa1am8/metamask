@@ -56,18 +56,6 @@ jobs:
           submodules: true
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          # list of Docker images to use as base name for tags
-          images: |
-            ${{ env.IMAGE_NAME }}
-          # generate Docker tags based on the following events/attributes
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to Docker Hub
@@ -81,8 +69,6 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
   deploy:
     name: Deploy to s2b
     runs-on: ubuntu-latest
