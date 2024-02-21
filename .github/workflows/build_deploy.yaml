@@ -83,7 +83,7 @@ jobs:
           username: ${{ env.DEPLOY_USER_NAME }}
           key: ${{ env.DEPLOY_SSH_KEY }}
           port: ${{ env.DEPLOY_SSH_PORT }}
-          source: docker-compose.yaml
+          source: docker-compose.prod.yaml
           target: ~/marvel_bot
       - name: deploy
         uses: appleboy/ssh-action@v0.1.10
@@ -94,6 +94,7 @@ jobs:
           port: ${{ env.DEPLOY_SSH_PORT }}
           script: |
             cd ~/marvel_bot &&
+            mv docker-compose.prod.yaml docker-compose.yaml &&
             docker compose pull &&
             docker compose up -d &&
             docker system prune -f
