@@ -10,10 +10,12 @@ python = "^3.11"
 web3 = "^6.15.1"
 eth-account = "^0.11.0"
 pydantic-settings = "^2.2.0"
-ruff = "^0.2.2"
-mypy = "^1.8.0"
 websocket-client = "^1.7.0"
 
+
+[tool.poetry.group.dev.dependencies]
+mypy = "^1.8.0"
+ruff = "^0.2.2"
 
 [build-system]
 requires = ["poetry-core"]
