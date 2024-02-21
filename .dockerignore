@@ -21,3 +21,4 @@ TODO.md
 **/package.json
 **/yarn.lock
 **/.env
+docker-compose.prod.yaml

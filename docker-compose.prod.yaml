@@ -1,0 +1,7 @@
+version: "3.8"
+
+services:
+  app:
+    build: simple2b/marvel-bot
+    env_file:
+      - .env
