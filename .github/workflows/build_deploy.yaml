@@ -3,7 +3,8 @@ name: Build and Deploy
 on:
   pull_request:
     branches: [main, develop]
-
+  push:
+    branches: [develop]
 env:
   DOCKER_LOGIN: simple2b
   IMAGE_NAME: simple2b/marvel-bot
