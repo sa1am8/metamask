@@ -96,7 +96,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
   deploy:
-    name: Deploy to staging
+    name: Deploy to s2b
     runs-on: Linux
     needs:
       - on-develop-branch-check
