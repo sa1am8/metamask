@@ -41,7 +41,7 @@ jobs:
       - name: Run mypy
         working-directory: .
         run: |
-          poetry run mypy
+          poetry run mypy .
 
   build:
     name: Build and Push
