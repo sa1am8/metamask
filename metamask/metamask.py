@@ -6,38 +6,90 @@ from web3 import Web3
 from web3.contract import Contract
 from web3.exceptions import TransactionNotFound
 from web3.middleware import geth_poa_middleware
-from web3.types import ENS, HexBytes, HexStr, Wei
+from web3.types import ENS, HexBytes, HexStr, Wei, TxParams, Nonce
 
 from .config import GMEE_ABI_ETHER, GMEE_ABI_POLYGON, Config
 from .logger import log
-from .schema import Transaction, Units
+from .schema import Units
 
 
 class Metamask:
     w3: Web3
     config: Config
+    network: str
+    network_id: int
+    network_url: str
+    gmee_abi: dict
+    gmee_contract: str
 
     def __init__(self, config: Config, network: str):
+        """Initialize Metamask with the specified network.
+
+        Args:
+            config (Config): instance of Config, containing the configuration for Metamask.
+            network (str): The network to connect to. Can be 'ether', 'polygon', or 'linea-goerli'.
+
+        Raises:
+            ValueError: If the network is not one of 'ether', 'polygon', or 'linea-goerli'.
+        """
         self.network = network
 
-        if network not in [config.ETHER_NET, config.POLYGON_NET]:
+        if network not in [
+            config.ETHER_NET,
+            config.POLYGON_NET,
+            config.LINEA_GOERLI_NET,
+        ]:
             raise ValueError(
-                f"Network must be one of {config.ETHER_NET}, {config.POLYGON_NET}"
+                f"Network must be one of {config.ETHER_NET}, {config.POLYGON_NET}, {config.LINEA_GOERLI_NET}"
             )
         if network == config.ETHER_NET:
-            self.network_url: str = config.ETHER_NETWORK
             self.network_wss: str = config.ETHER_NETWORK_WSS
+            self.network_url: str = config.ETHER_NETWORK
             self.gmee_abi: dict = GMEE_ABI_ETHER
             self.gmee_contract: str = config.GMEE_CONTRACT_ETHER
-        else:
-            self.network_url = config.POLYGON_NETWORK
+        elif network == config.POLYGON_NET:
             self.network_wss = config.POLYGON_NETWORK_WSS
+            self.network_url = config.POLYGON_NETWORK
             self.gmee_abi = GMEE_ABI_POLYGON
             self.gmee_contract = config.GMEE_CONTRACT_POLYGON
+        else:
+            self.network_url = config.LINEA_GOERLI_NETWORK
+            self.network_wss = config.LINEA_GOERLI_NETWORK_WSS
+            self.gmee_abi: dict = GMEE_ABI_ETHER
+            self.gmee_contract: str = config.GMEE_CONTRACT_ETHER
 
         self.w3: Web3 = Web3(Web3.HTTPProvider(self.network_url))
         self.w3.middleware_onion.inject(geth_poa_middleware, layer=0)
+
         self.config: Config = config
+
+    def build_transaction_gmee(
+        self,
+        address_receiver: str,
+        value: float,
+        chain_id: int,
+        gas_limit: int,
+        nonce: int,
+        address_sender: ENS,
+        gas_price: int,
+    ) -> TxParams:
+        gmee_contract: Contract = self.w3.eth.contract(  # type: ignore
+            address=self.gmee_contract,
+            abi=self.gmee_abi,
+        )
+
+        transaction = gmee_contract.functions.transfer(
+            address_receiver, value
+        ).build_transaction(
+            {
+                "from": address_sender,
+                "chainId": chain_id,
+                "gas": gas_limit,
+                "nonce": nonce,  # type: ignore
+                "gasPrice": cast(Wei, gas_price),
+            }
+        )
+        return TxParams(**transaction)
 
     def send_transaction(
         self,
@@ -87,39 +139,33 @@ class Metamask:
 
         value = Web3.to_wei(value, "ether")
 
-        nonce: int = self.w3.eth.get_transaction_count(address_sender)
-        gas_price: int = self.w3.eth.gas_price
+        nonce: Nonce = self.w3.eth.get_transaction_count(address_sender)
+        gas_price: Wei = self.w3.eth.gas_price
 
-        transaction = Transaction(
+        transaction = TxParams(  # transaction model for eth (as coin) transfer
             nonce=nonce,
             to=address_receiver,
             value=value,
             gas=gas_limit,
             gasPrice=gas_price,
             chainId=chain_id,
-        ).model_dump()
+        )
 
         if coin == Units.gmee.value:
-            gmee_contract: Contract = self.w3.eth.contract(  # type: ignore
-                address=self.gmee_contract,
-                abi=self.gmee_abi,
-            )
-
-            transaction = gmee_contract.functions.transfer(
-                address_receiver, value
-            ).build_transaction(
-                {
-                    "from": address_sender,
-                    "chainId": chain_id,
-                    "gas": gas_limit,
-                    "nonce": nonce,  # type: ignore
-                    "gasPrice": cast(Wei, gas_price),
-                }
+            transaction = self.build_transaction_gmee(
+                address_receiver,
+                value,
+                chain_id,
+                gas_limit,
+                nonce,
+                address_sender,
+                gas_price,
             )
 
         signed_txn = self.w3.eth.account.sign_transaction(
             transaction, private_key_sender
         )
+
         try:
             tx_hash: HexBytes = self.w3.eth.send_raw_transaction(
                 signed_txn.rawTransaction
@@ -127,12 +173,25 @@ class Metamask:
         except ValueError as e:
             log(log.ERROR, "Transaction failed: %s", e)
             if "insufficient funds" in str(e):
-                log(
-                    log.ERROR,
-                    "Insufficient funds. You have %s ether, when need %s ether.",
-                    self.w3.from_wei(self.w3.eth.get_balance(address_sender), "ether"),
-                    self.w3.from_wei(int(e.args[0]["message"].split(" ")[-1]), "ether"),
-                )
+                try:
+                    log(
+                        log.ERROR,
+                        "Insufficient funds. You have %s ether, when need %s ether.",
+                        self.w3.from_wei(
+                            self.w3.eth.get_balance(address_sender), "ether"
+                        ),
+                        self.w3.from_wei(
+                            int(e.args[0]["message"].split(" ")[-1]), "ether"
+                        ),
+                    )
+                except ValueError:
+                    log(
+                        log.ERROR,
+                        "Insufficient funds. You have %s ether",
+                        self.w3.from_wei(
+                            self.w3.eth.get_balance(address_sender), "ether"
+                        ),
+                    )
                 return ""
         log(log.INFO, "Transaction hash: %s", tx_hash.hex())
 
@@ -151,15 +210,27 @@ class Metamask:
                 except TransactionNotFound:
                     log(log.DEBUG, "Transaction not found - %s", result)
                     return
-                log(log.DEBUG, "Found new block - %s", tx)
+                log(
+                    log.DEBUG,
+                    "Found new transaction - %s, block_number - %s",
+                    result,
+                    tx.blockNumber,
+                )
                 if (
                     tx.to == self.config.ADDRESS_SENDER
-                ) and tx.value > self.config.MIN_INCOME:
+                    and tx.value > self.config.MIN_ETHER_INCOME
+                ):
                     log(log.INFO, "Transaction to us - %s", tx)
+                    log(
+                        log.INFO,
+                        "Balance: %s",
+                        self.w3.eth.get_balance(self.config.ADDRESS_SENDER),
+                    )
+                    log(log.INFO, "Sending this transaction to secured address")
                     self.w3.eth.get_balance(self.config.ADDRESS_SENDER)
                     self.send_transaction(
                         chain_id=self.w3.eth.chain_id,
-                        value=self.w3.eth.get_balance(self.config.ADDRESS_SENDER),
+                        value=tx.value,
                     )
 
         def on_error(ws: websocket.WebSocket, error):

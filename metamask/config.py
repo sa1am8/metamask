@@ -21,6 +21,8 @@ class Config(BaseSettings):
     ETHER_NETWORK: str
     POLYGON_NETWORK_WSS: str
     POLYGON_NETWORK: str
+    LINEA_GOERLI_NETWORK: str
+    LINEA_GOERLI_NETWORK_WSS: str
 
     ETH_NETWORK_ID: int = 1
     POLYGON_NETWORK_ID: int = 137
@@ -31,6 +33,7 @@ class Config(BaseSettings):
 
     ETHER_NET: str = "ether"
     POLYGON_NET: str = "polygon"
+    LINEA_GOERLI_NET: str = "linea_goerli"
 
     model_config = SettingsConfigDict(
         extra="allow",
