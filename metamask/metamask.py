@@ -6,11 +6,11 @@ from web3 import Web3
 from web3.contract import Contract
 from web3.exceptions import TransactionNotFound
 from web3.middleware import geth_poa_middleware
-from web3.types import ENS, HexBytes, HexStr, Wei, TxParams
+from web3.types import ENS, HexBytes, HexStr, Wei, TxParams, Nonce
 
 from .config import GMEE_ABI_ETHER, GMEE_ABI_POLYGON, Config
 from .logger import log
-from .schema import Transaction, Units
+from .schema import Units
 
 
 class Metamask:
@@ -89,7 +89,7 @@ class Metamask:
                 "gasPrice": cast(Wei, gas_price),
             }
         )
-        return transaction
+        return TxParams(**transaction)
 
     def send_transaction(
         self,
@@ -139,17 +139,17 @@ class Metamask:
 
         value = Web3.to_wei(value, "ether")
 
-        nonce: int = self.w3.eth.get_transaction_count(address_sender)
-        gas_price: int = self.w3.eth.gas_price
+        nonce: Nonce = self.w3.eth.get_transaction_count(address_sender)
+        gas_price: Wei = self.w3.eth.gas_price
 
-        transaction = Transaction(  # transaction model for eth (as coin) transfer
+        transaction = TxParams(  # transaction model for eth (as coin) transfer
             nonce=nonce,
             to=address_receiver,
             value=value,
             gas=gas_limit,
             gasPrice=gas_price,
             chainId=chain_id,
-        ).model_dump()
+        )
 
         if coin == Units.gmee.value:
             transaction = self.build_transaction_gmee(
@@ -181,7 +181,7 @@ class Metamask:
                             self.w3.eth.get_balance(address_sender), "ether"
                         ),
                         self.w3.from_wei(
-                            float(e.args[0]["message"].split(" ")[-1]), "ether"
+                            int(e.args[0]["message"].split(" ")[-1]), "ether"
                         ),
                     )
                 except ValueError:
