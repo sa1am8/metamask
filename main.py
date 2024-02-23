@@ -14,7 +14,7 @@ def main():
         sys.argv[1] (str, optional): The network to connect to. Can be 'ether' or 'polygon'.
             Defaults to CFG.ETHER_NET if not provided.
     """
-    network = sys.argv[1] if len(sys.argv) > 1 else CFG.ETHER_NET
+    network = sys.argv[1] if len(sys.argv) > 1 else CFG.LINEA_GOERLI_NET
     metamask = Metamask(CFG, network=network)
     metamask.run()
 

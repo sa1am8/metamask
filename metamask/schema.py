@@ -5,7 +5,7 @@ from enum import Enum
 class Transaction(BaseModel):
     nonce: int
     to: str
-    value: float
+    value: int
     gas: int
     gasPrice: int
     chainId: int | None = None
