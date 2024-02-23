@@ -1,24 +1,36 @@
+import json
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from web3.types import ENS
+
+GMEE_ABI_ETHER: dict = json.loads(open("metamask/data/gmee_abi_ether.json").read())
+GMEE_ABI_POLYGON: dict = json.loads(open("metamask/data/gmee_abi_polygon.json").read())
 
 
 class Config(BaseSettings):
     PRIVATE_KEY_SENDER: str
     ADDRESS_SENDER: ENS
     ADDRESS_RECEIVER: str
-    VALUE_ETHER: float
+    VALUE: float
     GAS_LIMIT: int
     INFURA_PROJECT_ID: str
     MIN_ETHER_INCOME: float = 0
 
-    INFURA_NETWORK_WSS: str
-    INFURA_NETWORK: str
+    ETHER_NETWORK_WSS: str
+    ETHER_NETWORK: str
+    POLYGON_NETWORK_WSS: str
+    POLYGON_NETWORK: str
 
     ETH_NETWORK_ID: int = 1
     POLYGON_NETWORK_ID: int = 137
     LINEA_TEST_NETWORK_ID: int = 59140
+
+    GMEE_CONTRACT_ETHER: str = "0xD9016A907Dc0ECfA3ca425ab20B6b785B42F2373"
+    GMEE_CONTRACT_POLYGON: str = "0xcf32822ff397Ef82425153a9dcb726E5fF61DCA7"
+
+    ETHER_NET: str = "ether"
+    POLYGON_NET: str = "polygon"
 
     model_config = SettingsConfigDict(
         extra="allow",

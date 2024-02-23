@@ -1,7 +1,14 @@
 version: "3.8"
 
 services:
-  app:
+  ether:
     build: .
     env_file:
       - .env
+    command: poetry run python main.py ether
+
+  polygon:
+    build: .
+    env_file:
+      - .env
+    command: poetry run python main.py polygon

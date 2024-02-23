@@ -1,7 +1,14 @@
 version: "3.8"
 
 services:
-  app:
+  ether:
     image: simple2b/marvel-bot
     env_file:
       - .env
+    command: poetry run python main.py ether
+
+  polygon:
+    image: simple2b/marvel-bot
+    env_file:
+      - .env
+    command: poetry run python main.py polygon

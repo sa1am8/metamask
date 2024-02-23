@@ -25,5 +25,3 @@ COPY --chown=app:app poetry.toml .
 RUN poetry install --no-interaction --no-ansi --without dev --no-root
 
 COPY --chown=app:app . .
-
-CMD ["poetry", "run", "python", "main.py"]
