@@ -52,9 +52,9 @@ class Metamask:
             self.coin = Units.matic.value
         else:
             self.network_url = config.LINEA_GOERLI_NETWORK
-            self.gmee_abi: dict = GMEE_ABI_ETHER
-            self.gmee_contract: str = config.GMEE_CONTRACT_ETHER
-            self.coin: str = Units.eth.value
+            self.gmee_abi = GMEE_ABI_ETHER
+            self.gmee_contract = config.GMEE_CONTRACT_ETHER
+            self.coin = Units.eth.value
 
         self.w3: Web3 = Web3(Web3.HTTPProvider(self.network_url))
         self.w3.middleware_onion.inject(geth_poa_middleware, layer=0)
