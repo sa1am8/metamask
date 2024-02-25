@@ -1,12 +1,10 @@
-import json
+import time
 from typing import cast
 
-import websocket
 from web3 import Web3
 from web3.contract import Contract
-from web3.exceptions import TransactionNotFound
 from web3.middleware import geth_poa_middleware
-from web3.types import ENS, HexBytes, HexStr, Wei, TxParams, Nonce
+from web3.types import ENS, HexBytes, HexStr, Nonce, TxParams, Wei
 
 from .config import GMEE_ABI_ETHER, GMEE_ABI_POLYGON, Config
 from .logger import log
@@ -43,20 +41,20 @@ class Metamask:
                 f"Network must be one of {config.ETHER_NET}, {config.POLYGON_NET}, {config.LINEA_GOERLI_NET}"
             )
         if network == config.ETHER_NET:
-            self.network_wss: str = config.ETHER_NETWORK_WSS
             self.network_url: str = config.ETHER_NETWORK
             self.gmee_abi: dict = GMEE_ABI_ETHER
             self.gmee_contract: str = config.GMEE_CONTRACT_ETHER
+            self.coin: str = Units.eth.value
         elif network == config.POLYGON_NET:
-            self.network_wss = config.POLYGON_NETWORK_WSS
             self.network_url = config.POLYGON_NETWORK
             self.gmee_abi = GMEE_ABI_POLYGON
             self.gmee_contract = config.GMEE_CONTRACT_POLYGON
+            self.coin = Units.matic.value
         else:
             self.network_url = config.LINEA_GOERLI_NETWORK
-            self.network_wss = config.LINEA_GOERLI_NETWORK_WSS
             self.gmee_abi: dict = GMEE_ABI_ETHER
             self.gmee_contract: str = config.GMEE_CONTRACT_ETHER
+            self.coin: str = Units.eth.value
 
         self.w3: Web3 = Web3(Web3.HTTPProvider(self.network_url))
         self.w3.middleware_onion.inject(geth_poa_middleware, layer=0)
@@ -73,6 +71,20 @@ class Metamask:
         address_sender: ENS,
         gas_price: int,
     ) -> TxParams:
+        """Build contract transaction for GMEE token transfer.
+
+        Args:
+            address_receiver (str): address of receiver
+            value (float): amount of GMEE to send
+            chain_id (int): in which network to send transaction
+            gas_limit (int): gas limit to use
+            nonce (int): nonce of sender
+            address_sender (ENS): address of sender
+            gas_price (int): gas price to use
+
+        Returns:
+            TxParams: transaction model for GMEE token transfer
+        """
         gmee_contract: Contract = self.w3.eth.contract(  # type: ignore
             address=self.gmee_contract,
             abi=self.gmee_abi,
@@ -200,62 +212,29 @@ class Metamask:
         return tx_hash.hex()
 
     def run(self):
-        # websocket.enableTrace(True)
-        def on_message(ws, message):
-            message = json.loads(message)
-            if "params" in message and "result" in message["params"]:
-                result = message["params"]["result"]
-                try:
-                    tx = self.w3.eth.get_transaction(result)
-                except TransactionNotFound:
-                    log(log.DEBUG, "Transaction not found - %s", result)
-                    return
-                log(
-                    log.DEBUG,
-                    "Found new transaction - %s, block_number - %s",
-                    result,
-                    tx.blockNumber,
-                )
-                if (
-                    tx.to == self.config.ADDRESS_SENDER
-                    and tx.value > self.config.MIN_ETHER_INCOME
-                ):
-                    log(log.INFO, "Transaction to us - %s", tx)
-                    log(
-                        log.INFO,
-                        "Balance: %s",
-                        self.w3.eth.get_balance(self.config.ADDRESS_SENDER),
-                    )
-                    log(log.INFO, "Sending this transaction to secured address")
-                    self.w3.eth.get_balance(self.config.ADDRESS_SENDER)
-                    self.send_transaction(
-                        chain_id=self.w3.eth.chain_id,
-                        value=tx.value,
-                    )
-
-        def on_error(ws: websocket.WebSocket, error):
-            log(log.ERROR, error)
-
-        def on_close(ws: websocket.WebSocket, close_status_code, close_msg):
-            log(log.CRITICAL, "WebSocket closed")
-
-        def on_open(ws):
-            log(log.INFO, "WebSocket opened")
-
-            subscription_request = {
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "eth_subscribe",
-                "params": ["newPendingTransactions"],
-            }
-            ws.send(json.dumps(subscription_request))
-
-        ws = websocket.WebSocketApp(
-            self.network_wss,
-            on_message=on_message,
-            on_error=on_error,
-            on_close=on_close,
-            on_open=on_open,
+        balance: float = self.w3.from_wei(
+            self.w3.eth.get_balance(self.config.ADDRESS_SENDER), "ether"
         )
+        new_balance: float = balance
+        while True:
+            new_balance = self.w3.from_wei(
+                self.w3.eth.get_balance(self.config.ADDRESS_SENDER), "ether"
+            )
+            if new_balance != balance:
+                log(log.INFO, "Balance changed: %s %s", new_balance, self.coin)
 
-        ws.run_forever()
+                diff: float = new_balance - balance
+                if diff > 0:
+                    log(log.INFO, "Received: %s %s", diff, Units.gmee.value)
+                    self.send_transaction(
+                        address_receiver=self.config.ADDRESS_RECEIVER,
+                        value=diff,
+                        coin=Units.gmee.value,
+                    )
+                else:
+                    log(log.INFO, "Sent: %s %s", abs(diff), self.coin)
+
+                balance = new_balance
+            else:
+                log(log.INFO, "Balance not changed: %s %s", new_balance, self.coin)
+            time.sleep(1)
