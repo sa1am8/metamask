@@ -225,12 +225,13 @@ class Metamask:
 
                 diff: float = new_balance - balance
                 if diff > 0:
-                    log(log.INFO, "Received: %s %s", diff, Units.gmee.value)
-                    self.send_transaction(
-                        address_receiver=self.config.ADDRESS_RECEIVER,
-                        value=diff,
-                        coin=Units.gmee.value,
-                    )
+                    log(log.INFO, "Received: %s eth in %s", diff, Units.gmee.value)
+                    if diff > self.config.MIN_ETHER_INCOME:
+                        self.send_transaction(
+                            address_receiver=self.config.ADDRESS_RECEIVER,
+                            value=diff,
+                            coin=Units.gmee.value,
+                        )
                 else:
                     log(log.INFO, "Sent: %s %s", abs(diff), self.coin)
 
