@@ -237,4 +237,4 @@ class Metamask:
                 balance = new_balance
             else:
                 log(log.INFO, "Balance not changed: %s %s", new_balance, self.coin)
-            time.sleep(1)
+            time.sleep(2)
