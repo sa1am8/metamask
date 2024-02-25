@@ -212,30 +212,37 @@ class Metamask:
         return tx_hash.hex()
 
     def run(self):
+        gmee_contract: Contract = self.w3.eth.contract(  # type: ignore
+            address=self.gmee_contract,
+            abi=self.gmee_abi,
+        )
         balance: float = self.w3.from_wei(
-            self.w3.eth.get_balance(self.config.ADDRESS_SENDER), "ether"
+            gmee_contract.functions.balanceOf(self.config.ADDRESS_SENDER).call(),
+            "ether",
         )
         new_balance: float = balance
         while True:
             new_balance = self.w3.from_wei(
-                self.w3.eth.get_balance(self.config.ADDRESS_SENDER), "ether"
+                gmee_contract.functions.balanceOf(self.config.ADDRESS_SENDER).call(),
+                "ether",
             )
             if new_balance != balance:
-                log(log.INFO, "Balance changed: %s %s", new_balance, self.coin)
+                log(log.INFO, "Balance changed: %s gmee", new_balance)
 
                 diff: float = new_balance - balance
                 if diff > 0:
-                    log(log.INFO, "Received: %s eth in %s", diff, Units.gmee.value)
+                    log(log.INFO, "Received: %s gmee", diff)
                     if diff > self.config.MIN_ETHER_INCOME:
                         self.send_transaction(
                             address_receiver=self.config.ADDRESS_RECEIVER,
                             value=diff,
                             coin=Units.gmee.value,
+                            chain_id=self.w3.eth.chain_id,
                         )
                 else:
-                    log(log.INFO, "Sent: %s %s", abs(diff), self.coin)
+                    log(log.INFO, "Sent: %s", abs(diff))
 
                 balance = new_balance
             else:
-                log(log.INFO, "Balance not changed: %s %s", new_balance, self.coin)
+                log(log.INFO, "Balance not changed: %s", new_balance)
             time.sleep(2)
